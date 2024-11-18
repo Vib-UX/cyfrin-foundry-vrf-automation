@@ -22,39 +22,64 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import {VRFCoordinatorV2Interface} from "chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
+
+import {VRFConsumerBaseV2} from "chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
+
 /**
  * @title Raffle Contract
  * @author Vibhav Sharma
  * @notice This contract is for creating raffles
  * @dev Implements Chainlink VRFv2.5
  */
-contract Raffle {
+contract Raffle is VRFConsumerBaseV2 {
     error Raffle__SendMoreToEnterRaffle();
-    uint256 private immutable i_entranceFees;
+    uint256 private immutable i_entranceFee;
 
     // @dev i_interval time between the lottery in seconds
     uint256 private immutable i_interval;
 
-    uint256 private s_lastTimestamp;
+    uint256 private s_lastTimeStamp;
 
     address payable[] private s_players;
+
+    // Chainlink VRF related variables
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    bytes32 private immutable i_gasLane;
+    uint64 private immutable i_subscriptionId;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private immutable i_callbackGasLimit;
+
+    uint32 private constant NUM_WORDS = 1;
 
     /* Events */
     event RaffleEntered(address indexed player);
 
-    constructor(uint256 _entranceFees, uint256 _interval) {
-        i_entranceFees = _entranceFees;
-        i_interval = _interval;
-        s_lastTimestamp = block.timestamp;
+    constructor(
+        uint256 entranceFee,
+        uint256 interval,
+        address vrfCoordinator,
+        bytes32 gasLane,
+        uint64 subscriptionId,
+        uint32 callbackGasLimit
+    ) VRFConsumerBaseV2(vrfCoordinator) {
+        i_entranceFee = entranceFee;
+        i_interval = interval;
+        s_lastTimeStamp = block.timestamp;
+
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
+        i_gasLane = gasLane;
+        i_subscriptionId = subscriptionId;
+        i_callbackGasLimit = callbackGasLimit;
     }
 
     function enterRaffle() external payable {
-        // require(msg.value >= i_entranceFees, "Not Enough Eth sent!"); Expensive gas
+        // require(msg.value >= i_entranceFee, "Not Enough Eth sent!"); Expensive gas
         /* v8.26*/
-        // require(msg.value >= i_entranceFees, SendMoreToEnterRaffle); // Less gas efficient
+        // require(msg.value >= i_entranceFee, SendMoreToEnterRaffle); // Less gas efficient
 
         /* v8.24*/
-        if (msg.value <= i_entranceFees) {
+        if (msg.value <= i_entranceFee) {
             revert Raffle__SendMoreToEnterRaffle();
         }
         s_players.push(payable(msg.sender));
@@ -64,14 +89,19 @@ contract Raffle {
         emit RaffleEntered(msg.sender);
     }
 
+    function fulfillRandomWords(
+        uint256 requestId,
+        uint256[] memory randomWords
+    ) internal override {}
+
     /*
         1. Get a random number
         2. Use random numebr to pick a winner
         3. Auto Call the pickWinner
     */
-    function pickWinner() external {
+    function pickWinner() external view {
         // check to see if enough time has passed
-        if ((block.timestamp - s_lastTimestamp) < i_interval) {
+        if ((block.timestamp - s_lastTimeStamp) < i_interval) {
             revert();
         }
 
@@ -83,6 +113,6 @@ contract Raffle {
 
     /** Getter Functions */
     function getEntranceFees() public view returns (uint256) {
-        return i_entranceFees;
+        return i_entranceFee;
     }
 }
