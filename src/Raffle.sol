@@ -33,7 +33,18 @@ import {VRFConsumerBaseV2} from "chainlink/contracts/src/v0.8/vrf/VRFConsumerBas
  * @dev Implements Chainlink VRFv2.5
  */
 contract Raffle is VRFConsumerBaseV2 {
+    /* Errors */
     error Raffle__SendMoreToEnterRaffle();
+    error Raffle__RaffleNotOpen();
+    error Raffle__TransferFailed();
+
+    /* Type declarations */
+    enum RaffleState {
+        OPEN,
+        CALCULATING
+    }
+
+    /* State Variables */
     uint256 private immutable i_entranceFee;
 
     // @dev i_interval time between the lottery in seconds
@@ -42,6 +53,7 @@ contract Raffle is VRFConsumerBaseV2 {
     uint256 private s_lastTimeStamp;
 
     address payable[] private s_players;
+    address payable private s_recentWinner;
 
     // Chainlink VRF related variables
     VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
@@ -51,6 +63,7 @@ contract Raffle is VRFConsumerBaseV2 {
     uint32 private immutable i_callbackGasLimit;
 
     uint32 private constant NUM_WORDS = 1;
+    RaffleState private s_raffleState;
 
     /* Events */
     event RaffleEntered(address indexed player);
@@ -71,6 +84,7 @@ contract Raffle is VRFConsumerBaseV2 {
         i_gasLane = gasLane;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
+        s_raffleState = RaffleState.OPEN;
     }
 
     function enterRaffle() external payable {
@@ -82,6 +96,11 @@ contract Raffle is VRFConsumerBaseV2 {
         if (msg.value <= i_entranceFee) {
             revert Raffle__SendMoreToEnterRaffle();
         }
+
+        if (s_raffleState != RaffleState.OPEN) {
+            revert Raffle__RaffleNotOpen();
+        }
+
         s_players.push(payable(msg.sender));
         // 1. Make migration easier
         // 2. Make front end indexing easier
@@ -92,18 +111,29 @@ contract Raffle is VRFConsumerBaseV2 {
     function fulfillRandomWords(
         uint256 requestId,
         uint256[] memory randomWords
-    ) internal override {}
+    ) internal override {
+        uint256 indexOfWinner = randomWords[0] % s_players.length;
+        address payable winner = s_players[indexOfWinner];
+        s_recentWinner = winner;
+        s_raffleState = RaffleState.OPEN;
+        (bool success, ) = winner.call{value: address(this).balance}("");
+        if (!success) {
+            revert Raffle__TransferFailed();
+        }
+    }
 
     /*
         1. Get a random number
         2. Use random numebr to pick a winner
         3. Auto Call the pickWinner
     */
-    function pickWinner() external view {
+    function pickWinner() external {
         // check to see if enough time has passed
         if ((block.timestamp - s_lastTimeStamp) < i_interval) {
             revert();
         }
+
+        s_raffleState = RaffleState.CALCULATING;
 
         // Get our random number from Chainlink (The reason we are using Chainlink is to get a random number) as blockchain is a deterministic system How chainlink solves that?
         //  In VRF 2.5 getting RNG is two step process
