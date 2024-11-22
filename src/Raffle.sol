@@ -155,7 +155,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         );
     }
 
-    // CEI: Checks, Effects and Interactions Pattern
+    // CEI: Checks, Effects and Interactions Pattern to avoid reentrancy attacks
     function fulfillRandomWords(
         uint256 requestId,
         uint256[] memory randomWords
