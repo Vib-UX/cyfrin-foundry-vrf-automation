@@ -28,7 +28,7 @@ contract HelperConfig is CodeConstants, Script {
         address vrfCoordinator;
         bytes32 gasLane;
         uint32 callbackGasLimit;
-        uint256 subscriptionId;
+        uint64 subscriptionId;
     }
 
     NetworkConfig public localNetworkConfig;
@@ -48,6 +48,10 @@ contract HelperConfig is CodeConstants, Script {
         } else {
             revert HelperConfig__InvalidChainId();
         }
+    }
+
+    function getChainConfig() public returns (NetworkConfig memory) {
+        return getConfigByChainIds(block.chainid);
     }
 
     function getSepoliaEthConfig() public pure returns (NetworkConfig memory) {
