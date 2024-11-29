@@ -23,7 +23,8 @@
 pragma solidity ^0.8.19;
 
 import {VRFCoordinatorV2Interface} from "chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
-import {AutomationCompatibleInterface} from "chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+import {AutomationCompatibleInterface} from
+    "chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 import {VRFConsumerBaseV2} from "chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 
 /**
@@ -120,9 +121,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
      * 4. There are players registered.
      * 5. Implicity, your subscription is funded with LINK.
      */
-    function checkUpkeep(
-        bytes memory
-    ) public view returns (bool upkeepNeeded, bytes memory) {
+    function checkUpkeep(bytes memory) public view returns (bool upkeepNeeded, bytes memory) {
         bool isOpen = s_raffleState == RaffleState.OPEN;
         bool timePassed = (block.timestamp - s_lastTimeStamp) >= i_interval;
         bool hasPlayers = s_players.length > 0;
@@ -135,31 +134,20 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
     // 1. Get a random number
     // 2. Use the random number to pick a player
     // 3. Automatically called
-    function performUpkeep(bytes calldata /* performData */) external override {
-        (bool upkeepNeeded, ) = checkUpkeep("");
+    function performUpkeep(bytes calldata /* performData */ ) external override {
+        (bool upkeepNeeded,) = checkUpkeep("");
         // require(upkeepNeeded, "Upkeep not needed");
         if (!upkeepNeeded) {
-            revert Raffle__UpkeepNotNeeded(
-                address(this).balance,
-                s_players.length,
-                uint256(s_raffleState)
-            );
+            revert Raffle__UpkeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
         }
         s_raffleState = RaffleState.CALCULATING;
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
-            i_gasLane,
-            i_subscriptionId,
-            REQUEST_CONFIRMATIONS,
-            i_callbackGasLimit,
-            NUM_WORDS
+            i_gasLane, i_subscriptionId, REQUEST_CONFIRMATIONS, i_callbackGasLimit, NUM_WORDS
         );
     }
 
     // CEI: Checks, Effects and Interactions Pattern to avoid reentrancy attacks
-    function fulfillRandomWords(
-        uint256 requestId,
-        uint256[] memory randomWords
-    ) internal override {
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
         // Checks
 
         // Effect (Internal Contract States)
@@ -169,7 +157,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         s_raffleState = RaffleState.OPEN;
 
         // Interactions (External Contracts Interactions)
-        (bool success, ) = winner.call{value: address(this).balance}("");
+        (bool success,) = winner.call{value: address(this).balance}("");
         if (!success) {
             revert Raffle__TransferFailed();
         }
