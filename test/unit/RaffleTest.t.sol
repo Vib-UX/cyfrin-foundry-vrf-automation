@@ -52,7 +52,7 @@ contract RaffleTest is Test {
     function testRaffleRecordsWhenTheyEnter() public {
         // Arrange
         vm.prank(PLAYER);
-        uint256 txnFee = 0.0003 ether;
+        uint256 txnFee = 0.0003 ether; // 3-4 USD per txn
         //Assert/ Act
         raffle.enterRaffle{value: entranceFee + txnFee}();
         //Assert
