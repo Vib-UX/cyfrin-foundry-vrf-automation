@@ -28,7 +28,7 @@ contract HelperConfig is CodeConstants, Script {
         address vrfCoordinator;
         bytes32 gasLane;
         uint32 callbackGasLimit;
-        uint64 subscriptionId;
+        uint256 subscriptionId;
     }
 
     NetworkConfig public localNetworkConfig;
