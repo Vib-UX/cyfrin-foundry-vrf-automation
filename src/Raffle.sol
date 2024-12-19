@@ -176,12 +176,6 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         s_recentWinner = winner;
         s_raffleState = RaffleState.OPEN;
 
-        // Interactions (External Contracts Interactions)
-        (bool success, ) = winner.call{value: address(this).balance}("");
-        if (!success) {
-            revert Raffle__TransferFailed();
-        }
-
         // Resetting the s_players as lottery is decided for this round
         s_players = new address payable[](0);
 
@@ -189,25 +183,11 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         s_lastTimeStamp = block.timestamp;
 
         emit PickedWinner(winner);
-    }
-
-    /*
-        1. Get a random number
-        2. Use random numebr to pick a winner
-        3. Auto Call the pickWinner
-    */
-    function pickWinner() external {
-        // check to see if enough time has passed
-        if ((block.timestamp - s_lastTimeStamp) < i_interval) {
-            revert();
+        // Interactions (External Contracts Interactions)
+        (bool success, ) = winner.call{value: address(this).balance}("");
+        if (!success) {
+            revert Raffle__TransferFailed();
         }
-
-        s_raffleState = RaffleState.CALCULATING;
-
-        // Get our random number from Chainlink (The reason we are using Chainlink is to get a random number) as blockchain is a deterministic system How chainlink solves that?
-        //  In VRF 2.5 getting RNG is two step process
-        //  1. Request a random number
-        //  2. Get the random number
     }
 
     /**
@@ -223,5 +203,13 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
     function getPlayer(uint256 indexOfPlayer) external view returns (address) {
         return s_players[indexOfPlayer];
+    }
+
+    function getLastTimeStamp() external view returns (uint256) {
+        return s_lastTimeStamp;
+    }
+
+    function getRecentWinner() external view returns (address) {
+        return s_recentWinner;
     }
 }
